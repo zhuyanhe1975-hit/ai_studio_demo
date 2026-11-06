@@ -1,0 +1,73 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # Pull requests only build. configure-pages is skipped there because
+      # enablement is not supported on pull_request, and no site exists yet.
+      # enablement: true is required on deploy or the job fails with
+      # "Get Pages site failed ... Not Found".
+      - name: Configure Pages
+        id: pages
+        if: github.event_name != 'pull_request'
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Build
+        env:
+          # Do not publish a Gemini key in the public bundle.
+          GEMINI_API_KEY: ""
+        run: npm run build -- --base "/ai_studio_demo/"
+
+      - name: Check Pages base path
+        run: grep -q '/ai_studio_demo/' dist/index.html
+
+      - name: Upload Pages artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
