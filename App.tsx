@@ -162,7 +162,7 @@ const App: React.FC = () => {
 
   const handlePromptSubmit = async (prompt: string) => {
     if (!process.env.API_KEY) {
-        throw new Error("API Key not found");
+        throw new Error("A Gemini API key is not configured, so AI generation is unavailable.");
     }
 
     setIsGenerating(true);

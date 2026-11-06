@@ -19,20 +19,23 @@ export const PromptModal: React.FC<PromptModalProps> = ({ isOpen, mode, onClose,
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const missingApiKey = !process.env.API_KEY;
+  const missingApiKeyMessage = 'A Gemini API key is not configured, so AI generation is unavailable.';
+
   useEffect(() => {
     if (isOpen) {
       setPrompt('');
-      setError('');
+      setError(missingApiKey ? missingApiKeyMessage : '');
       setIsLoading(false);
     }
-  }, [isOpen]);
+  }, [isOpen, missingApiKey]);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!prompt.trim() || isLoading) return;
-    
+    if (!prompt.trim() || isLoading || missingApiKey) return;
+
     setIsLoading(true);
     setError('');
     
@@ -42,7 +45,8 @@ export const PromptModal: React.FC<PromptModalProps> = ({ isOpen, mode, onClose,
       onClose();
     } catch (err) {
       console.error(err);
-      setError('The magic failed! Please try again.');
+      const message = err instanceof Error ? err.message : '';
+      setError(/api key/i.test(message) ? message : 'The magic failed! Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -113,7 +117,7 @@ export const PromptModal: React.FC<PromptModalProps> = ({ isOpen, mode, onClose,
             <div className="flex justify-end">
               <button 
                 type="submit"
-                disabled={!prompt.trim() || isLoading}
+                disabled={!prompt.trim() || isLoading || missingApiKey}
                 className={`
                   flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white text-sm transition-all
                   ${isLoading 
